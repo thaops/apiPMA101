@@ -36,24 +36,31 @@ router.post('/login', async function (req, res, next) {
 
 });
 
-router.post('/register', async function (req, res, next) {
+router.post("/register", async function (req, res, next) {
   try {
     let data = req.body;
     // console.log(data);
 
     if (!data.name || !data.email || !data.password) {
-      res.status(200).json({ error: 'vui lòng nhập đầy đủ dữ liệu' });
+      res.status(200).json({ error: "vui lòng nhập đầy đủ dữ liệu" });
     } else {
-      const newUser = await UserControler.register(data.email, data.password, data.name, data.phone)
+      if (data.password.length < 8 || data.password > 255) {
+        res.status(200).json({ error: "Mật khẩu phải có ít nhất 8 ký tự và ít hơn 255 ký tự" });
+        return;
+      }
+      const newUser = await UserControler.register(
+        data.email,
+        data.password,
+        data.name,
+        data.phone
+      );
       res.status(200).json(newUser);
     }
-
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: 'Lỗi hệ thống ' + err });
+    res.status(500).json({ error: "Lỗi hệ thống " + err });
   }
 });
-
 
 router.post('/changePassword', async function (req, res, next) {
   const { email, password, newPassword } = req.body;
