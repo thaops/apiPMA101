@@ -42,7 +42,7 @@ router.post("/register", async function (req, res, next) {
     if (!data.name || !data.email || !data.password) {
       res.status(200).json({ error: "vui lòng nhập đầy đủ dữ liệu" });
     } else {
-      if (data.password.length < 8 || data.password > 255) {
+      if (data.password.length < 8 || data.password.length > 255) { 
         res
           .status(200)
           .json({
