@@ -65,12 +65,48 @@ const changePassword = async (email, password, newPassword) => {
         console.log("user bug >> " + error);
     }
 }
+async function getUserByEmail(email) {
+    try {
+        const user = await User.findOne({ email: email }).exec();
+        return user;
+    } catch (error) {
+        console.error('Error while fetching user by email:', error);
+        throw error;
+    }
+}
 
+const resetPassword = async (email, newPassword) => {
+    try {
+        // Tìm người dùng dựa trên email
+        const user = await User.findOne({ email: email });
 
+        // Kiểm tra xem người dùng có tồn tại không
+        if (!user) {
+            return { error: 'Không tìm thấy người dùng với email này' };
+        }
+
+        // Mã hóa mật khẩu mới
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+        // Cập nhật mật khẩu mới cho người dùng
+        user.password = hashedPassword;
+
+        // Lưu thay đổi vào cơ sở dữ liệu
+        await user.save();
+
+        // Trả về thông báo thành công
+        return { success: true, message: 'Mật khẩu đã được đặt lại thành công' };
+    } catch (error) {
+        console.error('Lỗi khi đặt lại mật khẩu:', error);
+        return { error: 'Đã xảy ra lỗi khi đặt lại mật khẩu' };
+    }
+};
 
 
 module.exports = {
     login,
     register,
-    changePassword
+    changePassword,
+    getUserByEmail,
+    resetPassword
 }

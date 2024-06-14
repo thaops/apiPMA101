@@ -1,5 +1,8 @@
 var express = require('express');
 var router = express.Router();
+const OTP = require('../models/OTP');
+const otpGenerator = require('otp-generator');
+const nodemailer = require('nodemailer');
 
 const UserControler = require('../models/Users/UserController');
 
@@ -58,5 +61,73 @@ router.post('/changePassword', async function (req, res, next) {
   res.json(changePass);
 });
 
+router.post('/forgotPassword', async (req, res) => {
+  const { email } = req.body;
+  const user = await UserControler.getUserByEmail(email);
+  if (!user) {
+      return res.status(404).json({ error: 'Không tìm thấy email' });
+  }
+
+  const otp = otpGenerator.generate(6, { digits: true, alphabets: false, upperCase: false, specialChars: false });
+  const otpDocument = new OTP({
+      email: email,
+      otp: otp,
+      timestamp: Date.now() + 600000 // Thời hạn của OTP là 10 phút
+  });
+
+  try {
+      await sendOTP(email, otp);
+      await OTP.deleteOne({ email: email });
+      await otpDocument.save();
+      res.status(200).json({ message: 'Đã gửi OTP thành công' });
+  } catch (error) {
+      console.error(error);
+      res.status(500).json({ error: 'Gửi OTP thất bại' });
+  }
+});
+
+router.post('/resetPassword', async (req, res) => {
+  const { email, otp, newPassword } = req.body;
+  const user = await UserControler.getUserByEmail(email);
+  if (!user) {
+      return res.status(404).json({ error: 'Không tìm thấy Email' });
+  }
+
+  const otpRecord = await OTP.findOne({ email: email });
+  if (!otpRecord || otpRecord.otp !== otp || otpRecord.timestamp < Date.now()) {
+      return res.status(400).json({ error: 'OTP không hợp lệ hoặc đã hết hạn' });
+  }
+
+  const result = await UserControler.resetPassword(email, newPassword);
+  if (result.success) {
+      await OTP.deleteOne({ email: email });
+      res.status(200).json({ message: 'Đặt lại mật khẩu thành công' });
+
+  } else {
+      res.status(500).json({ error: 'Đặt lại mật khẩu thất bại' });
+  }
+});
+
+async function sendOTP(email, otp) {
+  const transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+          user: 'phamngocquockhanh2004@gmail.com',
+          pass: 'bjjnqvppmoxvqlei'
+      }
+  });
+
+  const mailOptions = {
+    from: 'phamngocquockhanh2004@gmail.com',
+    to: email,
+    subject: 'Reset Password OTP',
+    html: `
+        <h2>Mã OTP của bạn là: <strong>${otp}</strong></h2>
+        <h2>Mã có hiệu lực trong 10 phút.</h2>
+    `
+};
+
+  return await transporter.sendMail(mailOptions);
+}
 
 module.exports = router;
